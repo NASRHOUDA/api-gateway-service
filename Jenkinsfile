@@ -170,9 +170,9 @@ pipeline {
         stage('Prepare Trivy Cache') {
             steps {
                 sh '''
-                    mkdir -p /tmp/trivy-cache
+                    mkdir -p /tmp/trivy-cache-api-gateway
                     docker run --rm \
-                      -v /tmp/trivy-cache:/root/.cache/trivy \
+                      -v /tmp/trivy-cache-api-gateway:/root/.cache/trivy \
                       aquasec/trivy:latest image \
                       --download-db-only \
                       --timeout 5m || echo "⚠️ Erreur download DB - mode offline"
@@ -188,7 +188,7 @@ pipeline {
                         docker run --rm \
                           --volumes-from jenkins \
                           -v /var/run/docker.sock:/var/run/docker.sock \
-                          -v /tmp/trivy-cache:/root/.cache/trivy \
+                          -v /tmp/trivy-cache-api-gateway:/root/.cache/trivy \
                           -w "${JENKINS_WS}" \
                           aquasec/trivy:latest image \
                           ${DOCKER_IMAGE}:latest \
@@ -215,10 +215,13 @@ pipeline {
             steps {
                 sh '''
                     set +x
-                    echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                    docker push ${DOCKER_IMAGE}:${BUILD_NUMBER}
-                    docker push ${DOCKER_IMAGE}:latest
-                    docker logout
+                    export DOCKER_CONFIG="${WORKSPACE}/.docker-${BUILD_NUMBER}"
+                    mkdir -p "${DOCKER_CONFIG}"
+                    echo "$DOCKER_PASS" | docker --config "${DOCKER_CONFIG}" login -u "$DOCKER_USER" --password-stdin
+                    docker --config "${DOCKER_CONFIG}" push ${DOCKER_IMAGE}:${BUILD_NUMBER}
+                    docker --config "${DOCKER_CONFIG}" push ${DOCKER_IMAGE}:latest
+                    docker --config "${DOCKER_CONFIG}" logout
+                    rm -rf "${DOCKER_CONFIG}"
                     echo "✅ Image poussée vers Docker Hub"
                 '''
             }
