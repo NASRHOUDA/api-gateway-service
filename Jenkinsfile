@@ -4,7 +4,6 @@ pipeline {
     environment {
         DOCKER_IMAGE   = 'houdanasr/api-gateway-service'
         VAULT_ADDR     = 'http://host.docker.internal:8200'
-        JENKINS_WS     = '/var/jenkins_home/workspace/api-gateway-pipeline'
         GH_USER        = 'NASRHOUDA'
     }
 
@@ -101,20 +100,20 @@ pipeline {
         }
 
         stage('SAST - Semgrep') {
-            steps {
-                sh '''
-                    docker run --rm \
-                      --volumes-from jenkins \
-                      returntocorp/semgrep:latest \
-                      semgrep --config=p/security-audit \
-                      /var/jenkins_home/workspace/api-gateway-pipeline \
-                      --no-git-ignore \
-                      --json --output=/var/jenkins_home/workspace/api-gateway-pipeline/semgrep-report.json \
-                    || echo "⚠️ Semgrep scan terminé"
-                '''
-                archiveArtifacts artifacts: 'semgrep-report.json', allowEmptyArchive: true
-            }
-        }
+    steps {
+        sh '''
+            docker run --rm \
+              --volumes-from jenkins \
+              returntocorp/semgrep:latest \
+              semgrep --config=p/security-audit \
+              "${WORKSPACE}" \
+              --no-git-ignore \
+              --json --output="${WORKSPACE}/semgrep-report.json" \
+            || echo "⚠️ Semgrep scan terminé"
+        '''
+        archiveArtifacts artifacts: 'semgrep-report.json', allowEmptyArchive: true
+    }
+}
 
         stage('SonarQube Analysis') {
             steps {
@@ -181,35 +180,32 @@ pipeline {
         }
 
         stage('Trivy Image Scan') {
-            steps {
-                retry(3) {
-                    sh '''
-                        set +e
-                        docker run --rm \
-                          --volumes-from jenkins \
-                          -v /var/run/docker.sock:/var/run/docker.sock \
-                          -v /tmp/trivy-cache-api-gateway:/root/.cache/trivy \
-                          -w "${JENKINS_WS}" \
-                          aquasec/trivy:latest image \
-                          ${DOCKER_IMAGE}:latest \
-                          --severity HIGH,CRITICAL \
-                          --exit-code 0 \
-                          --timeout 5m \
-                          --format json \
-                          --output trivy-report.json
-                        RESULT=$?
-                        if [ $RESULT -eq 0 ] || [ $RESULT -eq 1 ]; then
-                            echo "✅ Scan Trivy terminé"
-                            exit 0
-                        else
-                            echo "❌ Erreur lors du scan Trivy - Réessai..."
-                            exit 1
-                        fi
-                    '''
-                }
-                archiveArtifacts artifacts: 'trivy-report.json', allowEmptyArchive: true
-            }
+    steps {
+        retry(3) {
+            sh '''
+                set +e
+                docker run --rm \
+                  --volumes-from jenkins \
+                  -v /var/run/docker.sock:/var/run/docker.sock \
+                  -v /tmp/trivy-cache-api-gateway:/root/.cache/trivy \
+                  -w "${WORKSPACE}" \
+                  aquasec/trivy:latest image \
+                  ${DOCKER_IMAGE}:latest \
+                  --severity HIGH,CRITICAL \
+                  --exit-code 0 \
+                  --timeout 5m \
+                  --format json \
+                  --output "${WORKSPACE}/trivy-report.json"
+                RESULT=$?
+                if [ $RESULT -ne 0 ]; then
+                    echo "❌ Trivy a échoué (code $RESULT)"
+                    exit 1
+                fi
+            '''
         }
+        archiveArtifacts artifacts: 'trivy-report.json', allowEmptyArchive: true
+    }
+}
 
         stage('Push to Docker Hub') {
             steps {
