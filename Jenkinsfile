@@ -167,35 +167,33 @@ pipeline {
         }
 
         stage('Prepare Trivy Cache') {
-            steps {
-                sh '''
-                    mkdir -p /tmp/trivy-cache-api-gateway
-                    docker run --rm \
-                      -v /tmp/trivy-cache-api-gateway:/root/.cache/trivy \
-                      aquasec/trivy:latest image \
-                      --download-db-only \
-                      --timeout 5m || echo "⚠️ Erreur download DB - mode offline"
-                '''
-            }
-        }
+    steps {
+        sh '''
+            docker volume create trivy-cache-api-gateway
+            docker run --rm \
+              -v trivy-cache-api-gateway:/root/.cache/trivy \
+              aquasec/trivy:latest image \
+              --download-db-only --timeout 5m
+        '''
+    }
+}
 
-        stage('Trivy Image Scan') {
+stage('Trivy Image Scan') {
     steps {
         retry(3) {
             sh '''
                 set +e
                 docker run --rm \
-                  --volumes-from jenkins \
                   -v /var/run/docker.sock:/var/run/docker.sock \
-                  -v /tmp/trivy-cache-api-gateway:/root/.cache/trivy \
-                  -w "${WORKSPACE}" \
+                  -v trivy-cache-api-gateway:/root/.cache/trivy \
+                  -v jenkins_home:/workspace-out \
                   aquasec/trivy:latest image \
                   ${DOCKER_IMAGE}:latest \
                   --severity HIGH,CRITICAL \
                   --exit-code 0 \
                   --timeout 5m \
                   --format json \
-                  --output "${WORKSPACE}/trivy-report.json"
+                  --output /workspace-out/workspace/api-gateway-service/trivy-report.json
                 RESULT=$?
                 if [ $RESULT -ne 0 ]; then
                     echo "❌ Trivy a échoué (code $RESULT)"
