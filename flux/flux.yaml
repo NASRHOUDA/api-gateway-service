@@ -21,6 +21,6 @@ spec:
     name: api-gateway-service
   path: ./kubernetes
   prune: true
-  targetNamespace: taskmanager
+  targetNamespace: microservices
   wait: true
   timeout: 3m
