@@ -1,0 +1,26 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: api-gateway-service
+  namespace: flux-system
+spec:
+  interval: 1m
+  url: https://github.com/NASRHOUDA/api-gateway-service
+  ref:
+    branch: main
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: api-gateway-service
+  namespace: flux-system
+spec:
+  interval: 1m
+  sourceRef:
+    kind: GitRepository
+    name: api-gateway-service
+  path: ./kubernetes
+  prune: true
+  targetNamespace: taskmanager
+  wait: true
+  timeout: 3m
