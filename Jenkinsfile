@@ -206,6 +206,25 @@ stage('Trivy Image Scan') {
         archiveArtifacts artifacts: 'trivy-report.json', allowEmptyArchive: true
     }
 }
+        stage('Push to Docker Hub') {
+    steps {
+        sh '''
+            set +x
+            set -e
+            export DOCKER_CONFIG="${WORKSPACE}/.docker-${BUILD_NUMBER}"
+            mkdir -p "${DOCKER_CONFIG}"
+
+            echo "$DOCKER_PASS" | docker --config "${DOCKER_CONFIG}" login -u "$DOCKER_USER" --password-stdin
+
+            docker --config "${DOCKER_CONFIG}" push ${DOCKER_IMAGE}:${BUILD_NUMBER}
+            docker --config "${DOCKER_CONFIG}" push ${DOCKER_IMAGE}:latest
+
+            docker --config "${DOCKER_CONFIG}" logout
+            rm -rf "${DOCKER_CONFIG}"
+            echo "✅ Image poussée vers Docker Hub (tag ${BUILD_NUMBER} et latest confirmés)"
+        '''
+    }
+}
         stage('Update Manifests') {
             steps {
                 sh '''
@@ -228,18 +247,18 @@ stage('Trivy Image Scan') {
         }
 
         stage('Flux Reconciliation') {
-            steps {
-                sh '''
-                    sleep 30
-                    flux reconcile source git flux-system --timeout=3m || true
-                    flux reconcile kustomization taskmanager --timeout=3m || true
-                    sleep 20
-                    echo "📊 Pods:"
-                    kubectl get pods -n taskmanager -l app=api-gateway || true
-                    echo "✅ Déploiement Flux CD complété"
-                '''
-            }
-        }
+    steps {
+        sh '''
+            sleep 30
+            flux reconcile source git flux-system --timeout=3m || true
+            flux reconcile kustomization microservices --timeout=3m || true
+            sleep 20
+            echo "📊 Pods:"
+            kubectl get pods -n microservices -l app=api-gateway || true
+            echo "✅ Déploiement Flux CD complété"
+        '''
+    }
+}
 
         stage('DAST Security Scan') {
             steps {
