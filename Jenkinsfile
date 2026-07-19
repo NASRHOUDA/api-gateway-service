@@ -125,15 +125,15 @@ pipeline {
                 withSonarQubeEnv('SonarQube') {
                     sh '''
                         npx sonar-scanner \
-                          -Dsonar.projectKey=api-gateway-service \
-                          -Dsonar.sources=. \
-                          -Dsonar.host.url=http://host.docker.internal:9000 \
-                          -Dsonar.token="$SONAR_TOKEN" \
-                          -Dsonar.exclusions="**/node_modules/**,**/*.test.js,**/coverage/**" \
-                          -Dsonar.javascript.lcov.reportPaths="coverage/lcov.info" \
-                          -Dsonar.tests="__tests__" \
-                          -Dsonar.test.inclusions="**/*.test.js" \
-                          -Dsonar.working.directory=.scannerwork
+  -Dsonar.projectKey=api-gateway-service \
+  -Dsonar.sources=. \
+  -Dsonar.host.url=http://host.docker.internal:9000 \
+  -Dsonar.token="$SONAR_TOKEN" \
+  -Dsonar.exclusions="**/node_modules/**,**/*.test.js,**/coverage/**,**/zap-report/**,**/.scannerwork/**" \
+  -Dsonar.javascript.lcov.reportPaths="coverage/lcov.info" \
+  -Dsonar.tests="__tests__" \
+  -Dsonar.test.inclusions="**/*.test.js" \
+  -Dsonar.working.directory=.scannerwork
                     '''
                 }
             }
@@ -183,18 +183,20 @@ stage('Trivy Image Scan') {
         retry(3) {
             sh '''
                 set +e
-                docker run --rm \
+                docker rm -f trivy-scan-${BUILD_NUMBER} >/dev/null 2>&1 || true
+                docker run --name trivy-scan-${BUILD_NUMBER} \
                   -v /var/run/docker.sock:/var/run/docker.sock \
                   -v trivy-cache-api-gateway:/root/.cache/trivy \
-                  -v jenkins_home:/workspace-out \
                   aquasec/trivy:latest image \
                   ${DOCKER_IMAGE}:latest \
                   --severity HIGH,CRITICAL \
                   --exit-code 0 \
                   --timeout 5m \
                   --format json \
-                  --output /workspace-out/workspace/api-gateway-service/trivy-report.json
+                  --output /tmp/trivy-report.json
                 RESULT=$?
+                docker cp trivy-scan-${BUILD_NUMBER}:/tmp/trivy-report.json "${WORKSPACE}/trivy-report.json" 2>/dev/null || echo "⚠️ Rapport Trivy introuvable"
+                docker rm trivy-scan-${BUILD_NUMBER} >/dev/null 2>&1 || true
                 if [ $RESULT -ne 0 ]; then
                     echo "❌ Trivy a échoué (code $RESULT)"
                     exit 1
@@ -204,23 +206,6 @@ stage('Trivy Image Scan') {
         archiveArtifacts artifacts: 'trivy-report.json', allowEmptyArchive: true
     }
 }
-
-        stage('Push to Docker Hub') {
-            steps {
-                sh '''
-                    set +x
-                    export DOCKER_CONFIG="${WORKSPACE}/.docker-${BUILD_NUMBER}"
-                    mkdir -p "${DOCKER_CONFIG}"
-                    echo "$DOCKER_PASS" | docker --config "${DOCKER_CONFIG}" login -u "$DOCKER_USER" --password-stdin
-                    docker --config "${DOCKER_CONFIG}" push ${DOCKER_IMAGE}:${BUILD_NUMBER}
-                    docker --config "${DOCKER_CONFIG}" push ${DOCKER_IMAGE}:latest
-                    docker --config "${DOCKER_CONFIG}" logout
-                    rm -rf "${DOCKER_CONFIG}"
-                    echo "✅ Image poussée vers Docker Hub"
-                '''
-            }
-        }
-
         stage('Update Manifests') {
             steps {
                 sh '''
