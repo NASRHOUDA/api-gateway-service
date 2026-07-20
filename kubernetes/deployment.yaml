@@ -2,7 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: api-gateway
-  namespace: taskmanager
   labels:
     app: api-gateway
 spec:
@@ -37,14 +36,16 @@ spec:
             app: api-gateway
       containers:
       - name: api-gateway
-        image: houdanasr/api-gateway-service:latest
+        image: houdanasr/api-gateway-service:14
         ports:
         - containerPort: 5000
         env:
         - name: PORT
           value: "5000"
         - name: FRONTEND_URL
-          value: "http://localhost:3000"
+          value: "http://microservices.127.0.0.1.nip.io"
+        - name: FRONTEND_SERVICE_URL
+          value: "http://frontend-microservice:80"
         - name: AUTH_SERVICE_URL
           value: "http://authentication-service:5001"
         - name: USER_SERVICE_URL
