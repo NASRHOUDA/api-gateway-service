@@ -5,3 +5,4 @@ resources:
   - service.yaml
   - external-secret.yaml
   - ingress.yaml
+  - monitoring/dashboards/api-gateway-service-dashboard.yaml
