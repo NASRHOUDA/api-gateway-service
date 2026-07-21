@@ -120,13 +120,13 @@ data:
           "targets": [
             {
               "editorMode": "code",
-              "expr": "rate(container_cpu_usage_seconds_total{namespace=\"microservices\", pod=~\"api-gateway.*\"}[5m]) * 100",
+              "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"microservices\", pod=~\"api-gateway.*\", container!=\"\", container!=\"POD\"}[5m])) by (pod) * 100",
               "legendFormat": "{{pod}}",
               "range": true,
               "refId": "A"
             }
           ],
-          "title": "api-gateway \u2014 CPU (%)",
+          "title": "api-gateway — CPU (%)",
           "type": "timeseries"
         },
         {
@@ -215,13 +215,13 @@ data:
           "targets": [
             {
               "editorMode": "code",
-              "expr": "container_memory_usage_bytes{namespace=\"microservices\", pod=~\"api-gateway.*\"} / 1024 / 1024",
+              "expr": "sum(container_memory_working_set_bytes{namespace=\"microservices\", pod=~\"api-gateway.*\", container!=\"\", container!=\"POD\"}) by (pod) / 1024 / 1024",
               "legendFormat": "{{pod}}",
               "range": true,
               "refId": "A"
             }
           ],
-          "title": "api-gateway \u2014 RAM (MB)",
+          "title": "api-gateway — RAM (MB)",
           "type": "timeseries"
         },
         {
@@ -274,11 +274,7 @@ data:
                 "steps": [
                   {
                     "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
+                    "value": null
                   }
                 ]
               }
@@ -309,13 +305,13 @@ data:
           "targets": [
             {
               "editorMode": "code",
-              "expr": "sum(rate(gateway_proxy_errors_total[5m])) by (upstream)",
-              "legendFormat": "{{upstream}}",
+              "expr": "sum(rate(http_request_duration_seconds_count{app=\"api-gateway\", status_code=~\"5..\"}[5m])) by (route)",
+              "legendFormat": "{{route}}",
               "range": true,
               "refId": "A"
             }
           ],
-          "title": "api-gateway \u2014 Erreurs proxy par upstream (/s)",
+          "title": "api-gateway — Erreurs 5xx par route (/s)",
           "type": "timeseries"
         },
         {
@@ -347,7 +343,7 @@ data:
             "overrides": []
           },
           "gridPos": {
-            "h": 4,
+            "h": 6,
             "w": 8,
             "x": 0,
             "y": 7
@@ -370,11 +366,11 @@ data:
           },
           "targets": [
             {
-              "expr": "count_over_time({namespace=\"microservices\", pod=~\"api-gateway.*\"} | json | status_code >= 500 [5m])",
+              "expr": "count_over_time({namespace=\"microservices\", pod=~\"api-gateway.*\"} |~ \"error|failed| 502 | 503 | 504 \" [5m])",
               "refId": "A"
             }
           ],
-          "title": "api-gateway \u2014 Logs erreurs",
+          "title": "api-gateway — Logs erreurs",
           "type": "stat"
         },
         {
@@ -385,7 +381,41 @@ data:
           "fieldConfig": {
             "defaults": {
               "color": {
-                "mode": "thresholds"
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "showValues": false,
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
               },
               "mappings": [],
               "thresholds": {
@@ -393,54 +423,46 @@ data:
                 "steps": [
                   {
                     "color": "green",
-                    "value": 0
-                  },
-                  {
-                    "color": "orange",
-                    "value": 1
-                  },
-                  {
-                    "color": "red",
-                    "value": 5
+                    "value": null
                   }
                 ]
-              }
+              },
+              "unit": "s"
             },
             "overrides": []
           },
           "gridPos": {
-            "h": 4,
+            "h": 6,
             "w": 8,
             "x": 8,
             "y": 7
           },
           "id": 5,
           "options": {
-            "colorMode": "value",
-            "graphMode": "area",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
             },
-            "textMode": "auto",
-            "wideLayout": true
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "single",
+              "sort": "none"
+            }
           },
+          "pluginVersion": "12.3.1",
           "targets": [
             {
               "editorMode": "code",
-              "expr": "sum(rate(gateway_proxy_errors_total[5m])) by (upstream)",
-              "legendFormat": "{{upstream}}",
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{app=\"api-gateway\"}[5m])) by (le, route))",
+              "legendFormat": "{{route}}",
               "range": true,
               "refId": "A"
             }
           ],
-          "title": "api-gateway \u2014 Alerte: erreurs proxy par upstream",
-          "type": "stat"
+          "title": "api-gateway — Latence p95 par route",
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -462,19 +484,20 @@ data:
                   },
                   {
                     "color": "yellow",
-                    "value": 5
+                    "value": 1
                   },
                   {
                     "color": "red",
-                    "value": 20
+                    "value": 5
                   }
                 ]
-              }
+              },
+              "unit": "percent"
             },
             "overrides": []
           },
           "gridPos": {
-            "h": 4,
+            "h": 6,
             "w": 8,
             "x": 16,
             "y": 7
@@ -498,13 +521,13 @@ data:
           "targets": [
             {
               "editorMode": "code",
-              "expr": "sum(rate(gateway_rate_limit_hits_total[5m]))",
-              "legendFormat": "rate limit hits/s",
+              "expr": "100 * sum(rate(http_request_duration_seconds_count{app=\"api-gateway\", status_code=~\"5..\"}[5m])) / sum(rate(http_request_duration_seconds_count{app=\"api-gateway\"}[5m]))",
+              "legendFormat": "taux erreur %",
               "range": true,
               "refId": "A"
             }
           ],
-          "title": "api-gateway \u2014 Rate limiting (throttling vs panne)",
+          "title": "api-gateway — Alerte: taux erreur 5xx (%)",
           "type": "stat"
         }
       ],
@@ -527,5 +550,5 @@ data:
       "timezone": "browser",
       "title": "api-gateway - Metrics & Logs",
       "uid": "api-gateway-dashboard",
-      "version": 1
+      "version": 2
     }
