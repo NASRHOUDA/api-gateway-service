@@ -1,56 +1,47 @@
 title = "taskmanager-app gitleaks config"
-
 [extend]
 useDefault = true
-
 # ===== alerting (SMTP password only, email autorisé) =====
 [[rules]]
 id = "gmail-app-password-pattern"
-description = "Format générique d'un Gmail App Password (16 lettres, groupes de 4 espacées ou non)"
-regex = '''\b([a-z]{4}[ ]?){4}\b'''
+description = "Gmail App Password (16 lettres, groupes de 4 espacées ou non), détecté uniquement dans un contexte smtp/app password"
+regex = '''(?i)(smtp[_-]?app[_-]?password|app[_-]?password|smtp[_-]?password)\s*[:=]\s*['"]?(([a-z]{4}[ ]?){4})['"]?'''
 tags = ["gmail", "smtp", "pattern"]
-
 # ===== app secrets =====
 [[rules]]
 id = "jwt-secret-assignment"
 description = "JWT secret assigné en dur"
 regex = '''(?i)(jwt_secret|jwtsecret)\s*[:=]\s*['"][^'"]{10,}['"]'''
 tags = ["jwt", "secret"]
-
 [[rules]]
 id = "replication-password-assignment"
 description = "Password de réplication PostgreSQL en dur"
 regex = '''(?i)replication[_-]?password\s*[:=]\s*['"][^'"]{10,}['"]'''
 tags = ["postgres", "replication", "password"]
-
 # ===== db =====
 [[rules]]
 id = "db-password-assignment"
 description = "Mot de passe DB en dur"
 regex = '''(?i)(db[_-]?pass(word)?|^password)\s*[:=]\s*['"][^'"]{8,}['"]'''
 tags = ["postgres", "password"]
-
 # ===== docker =====
 [[rules]]
 id = "dockerhub-password-assignment"
 description = "Mot de passe Docker Hub en dur"
 regex = '''(?i)docker[_-]?(hub)?[_-]?pass(word)?\s*[:=]\s*['"][^'"]{4,}['"]'''
 tags = ["docker", "password"]
-
 # ===== github =====
 [[rules]]
 id = "github-pat-token"
 description = "GitHub Personal Access Token"
 regex = '''ghp_[A-Za-z0-9]{36,40}'''
 tags = ["github", "token"]
-
 # ===== google oauth =====
 [[rules]]
 id = "google-client-secret"
 description = "Google OAuth client_secret"
 regex = '''GOCSPX-[A-Za-z0-9_-]{20,}'''
 tags = ["google", "oauth", "secret"]
-
 # ===== sonarqube =====
 [[rules]]
 id = "sonar-token"
