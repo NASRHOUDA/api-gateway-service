@@ -120,7 +120,7 @@ data:
           "targets": [
             {
               "editorMode": "code",
-              "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"microservices\", pod=~\"api-gateway.*\", container!=\"\", container!=\"POD\"}[5m])) by (pod) * 100",
+              "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"microservices\", pod=~\"api-gateway.*\", cpu=\"total\"}[5m])) by (pod) * 100",
               "legendFormat": "{{pod}}",
               "range": true,
               "refId": "A"
@@ -215,7 +215,7 @@ data:
           "targets": [
             {
               "editorMode": "code",
-              "expr": "sum(container_memory_working_set_bytes{namespace=\"microservices\", pod=~\"api-gateway.*\", container!=\"\", container!=\"POD\"}) by (pod) / 1024 / 1024",
+              "expr": "sum(container_memory_working_set_bytes{namespace=\"microservices\", pod=~\"api-gateway.*\"}) by (pod) / 1024 / 1024",
               "legendFormat": "{{pod}}",
               "range": true,
               "refId": "A"
