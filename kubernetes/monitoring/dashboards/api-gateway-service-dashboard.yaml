@@ -366,7 +366,7 @@ data:
           },
           "targets": [
             {
-              "expr": "count_over_time({namespace=\"microservices\", pod=~\"api-gateway.*\"} |~ \"error|failed| 502 | 503 | 504 \" [5m])",
+              "expr": "count_over_time({namespace=\"microservices\", pod=~\"api-gateway.*\"} |~ \"(?i)error|failed|forbidden| 502 | 503 | 504 \" [5m])",
               "refId": "A"
             }
           ],
