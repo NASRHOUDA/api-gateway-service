@@ -315,7 +315,10 @@ data:
           "type": "timeseries"
         },
         {
-          "datasource": "Loki",
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
           "fieldConfig": {
             "defaults": {
               "color": {
