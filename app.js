@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const { createProxyMiddleware } = require('http-proxy-middleware');
+const logger = require('./utils/logger');
 const app = express();
 const client = require('prom-client');
 client.collectDefaultMetrics({ timeout: 5000 });
@@ -31,25 +32,44 @@ app.get('/metrics', async (req, res) => {
   res.set('Content-Type', client.register.contentType);
   res.end(await client.register.metrics());
 });
+
+function proxyErrorHandler(serviceName) {
+  return (err, req, res) => {
+    logger.error(`Proxy error: ${serviceName} unreachable`, {
+      route: req.path,
+      method: req.method,
+      error: err.message,
+    });
+    if (!res.headersSent) {
+      res.status(502).json({ error: `Bad Gateway: ${serviceName} unreachable` });
+    }
+  };
+}
+
 app.use('/api/auth', createProxyMiddleware({
   target: process.env.AUTH_SERVICE_URL,
   changeOrigin: true,
+  onError: proxyErrorHandler('auth-service'),
 }));
 app.use('/api/users', createProxyMiddleware({
   target: process.env.USER_SERVICE_URL,
   changeOrigin: true,
+  onError: proxyErrorHandler('user-service'),
 }));
 app.use('/api/tasks', createProxyMiddleware({
   target: process.env.TASK_SERVICE_URL,
   changeOrigin: true,
+  onError: proxyErrorHandler('task-service'),
 }));
 app.use('/api/notifications', createProxyMiddleware({
   target: process.env.NOTIFICATION_SERVICE_URL,
   changeOrigin: true,
+  onError: proxyErrorHandler('notification-service'),
 }));
 function requireInternalKey(req, res, next) {
   const key = req.headers['x-internal-api-key'];
   if (!key || key !== process.env.INTERNAL_API_KEY) {
+    logger.warn('Forbidden: invalid or missing internal API key', { route: req.path, method: req.method });
     return res.status(403).json({ error: 'Forbidden: invalid or missing internal API key' });
   }
   next();
@@ -57,19 +77,22 @@ function requireInternalKey(req, res, next) {
 app.use('/internal/tasks', requireInternalKey, createProxyMiddleware({
   target: process.env.TASK_SERVICE_URL,
   changeOrigin: true,
+  onError: proxyErrorHandler('task-service'),
 }));
 app.use('/internal/users', requireInternalKey, createProxyMiddleware({
   target: process.env.USER_SERVICE_URL,
   changeOrigin: true,
+  onError: proxyErrorHandler('user-service'),
 }));
 app.use('/', createProxyMiddleware({
   target: process.env.FRONTEND_SERVICE_URL,
   changeOrigin: true,
+  onError: proxyErrorHandler('frontend-service'),
 }));
 const PORT = process.env.PORT || 5000;
 if (require.main === module) {
   app.listen(PORT, () => {
-    console.log(`🚪 API Gateway démarré sur le port ${PORT}`);
+    logger.info(`API Gateway démarré sur le port ${PORT}`);
   });
 }
 module.exports = app;
