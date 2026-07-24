@@ -90,6 +90,7 @@ app.use('/', createProxyMiddleware({
   onError: proxyErrorHandler('frontend-service'),
 }));
 const PORT = process.env.PORT || 5000;
+/* istanbul ignore if */
 if (require.main === module) {
   app.listen(PORT, () => {
     logger.info(`API Gateway démarré sur le port ${PORT}`);
