@@ -11,10 +11,17 @@ spec:
     - host: microservices.127.0.0.1.nip.io
       http:
         paths:
-          - path: /
+          - path: /api
             pathType: Prefix
             backend:
               service:
                 name: api-gateway-service
                 port:
                   number: 5000
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-microservice
+                port:
+                  number: 80
