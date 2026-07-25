@@ -32,7 +32,6 @@ app.get('/metrics', async (req, res) => {
   res.set('Content-Type', client.register.contentType);
   res.end(await client.register.metrics());
 });
-
 function proxyErrorHandler(serviceName) {
   return (err, req, res) => {
     logger.error(`Proxy error: ${serviceName} unreachable`, {
@@ -45,7 +44,6 @@ function proxyErrorHandler(serviceName) {
     }
   };
 }
-
 app.use('/api/auth', createProxyMiddleware({
   target: process.env.AUTH_SERVICE_URL,
   changeOrigin: true,
@@ -84,11 +82,9 @@ app.use('/internal/users', requireInternalKey, createProxyMiddleware({
   changeOrigin: true,
   onError: proxyErrorHandler('user-service'),
 }));
-app.use('/', createProxyMiddleware({
-  target: process.env.FRONTEND_SERVICE_URL,
-  changeOrigin: true,
-  onError: proxyErrorHandler('frontend-service'),
-}));
+app.use((req, res) => {
+  res.status(404).json({ error: 'Route not found in gateway' });
+});
 const PORT = process.env.PORT || 5000;
 /* istanbul ignore if */
 if (require.main === module) {
