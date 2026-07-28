@@ -37,7 +37,7 @@ spec:
             app: api-gateway
       containers:
       - name: api-gateway
-        image: houdanasr/api-gateway-service:29
+        image: houdanasr/api-gateway-service:32
         ports:
         - containerPort: 5000
         env:
